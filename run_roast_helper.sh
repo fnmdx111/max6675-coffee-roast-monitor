@@ -64,12 +64,12 @@ if [[ "$ready" != "true" ]]; then
 fi
 
 if [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" ]]; then
-  if command -v chromium-browser >/dev/null 2>&1; then
-    chromium-browser --kiosk "$URL" >/dev/null 2>&1 &
-  elif command -v chromium >/dev/null 2>&1; then
-    chromium --kiosk "$URL" >/dev/null 2>&1 &
-  elif command -v xdg-open >/dev/null 2>&1; then
+  if command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$URL" >/dev/null 2>&1 &
+  elif command -v chromium-browser >/dev/null 2>&1; then
+    chromium-browser "$URL" >/dev/null 2>&1 &
+  elif command -v chromium >/dev/null 2>&1; then
+    chromium "$URL" >/dev/null 2>&1 &
   fi
 fi
 

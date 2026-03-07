@@ -8,11 +8,6 @@
   </head>
   <body>
     <main class="app-shell">
-      <header class="header">
-        <h1>Coffee Roast Helper</h1>
-        <p id="serverStatus" class="muted">Connecting to server...</p>
-      </header>
-
       <section class="metrics">
         <article class="card gauge temp">
           <h2>Temperature</h2>
@@ -40,6 +35,7 @@
       </section>
 
       <section class="controls card">
+        <p id="serverStatus" class="muted server-status">Connecting to server...</p>
         <label>
           Profile
           <select id="profileSelect"></select>

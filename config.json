@@ -2,6 +2,10 @@
   "host": "0.0.0.0",
   "port": 8000,
   "poll_interval_sec": 0.5,
+  "ror": {
+    "window_sec": 30.0,
+    "min_span_sec": 5.0
+  },
   "sensor": {
     "mode": "mock",
     "mock": {

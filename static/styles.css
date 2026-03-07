@@ -15,28 +15,49 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100%;
   color: var(--text);
   font-family: "Trebuchet MS", "Segoe UI", sans-serif;
   background:
     radial-gradient(circle at 10% 10%, rgba(44, 120, 83, 0.12), transparent 36%),
     radial-gradient(circle at 90% 0, rgba(31, 111, 158, 0.15), transparent 44%),
     linear-gradient(160deg, var(--bg), var(--bg2));
+  overflow: hidden;
 }
 
 .app-shell {
-  max-width: 1080px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 1rem;
   display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(220px, 1fr);
+  grid-template-areas:
+    "metrics metrics"
+    "chart controls";
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.9rem;
+  align-items: stretch;
+  height: 100vh;
+  min-height: 0;
 }
 
-.header h1 {
-  margin: 0;
-  letter-spacing: 0.02em;
+.metrics {
+  grid-area: metrics;
+}
+
+.chart-wrap {
+  grid-area: chart;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.4rem;
 }
 
 .muted {
@@ -93,14 +114,22 @@ body {
 }
 
 .controls {
+  grid-area: controls;
   display: grid;
-  grid-template-columns: 210px 1fr;
+  grid-template-rows: auto auto 1fr;
   gap: 0.75rem;
-  align-items: end;
+  align-items: stretch;
+  min-height: 0;
+}
+
+.server-status {
+  margin-top: 0;
 }
 
 .controls label {
   display: grid;
+  align-content: start;
+  grid-template-rows: auto auto;
   gap: 0.4rem;
   font-weight: 700;
 }
@@ -119,20 +148,27 @@ select {
 }
 
 .buttons {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(4, minmax(58px, 1fr));
+  gap: 0.75rem;
+  min-height: 0;
 }
 
 button {
   background: #eff8f2;
   color: var(--accent);
   cursor: pointer;
+  min-height: 58px;
+  padding: 0.85rem 0.8rem;
+  font-size: 1rem;
+  touch-action: manipulation;
 }
 
 button.primary {
   background: var(--accent);
   color: #fff;
+  min-height: 64px;
 }
 
 button.warn {
@@ -146,25 +182,45 @@ button:disabled {
 }
 
 .chart-wrap {
-  overflow: hidden;
+  overflow: visible;
 }
 
 #chart {
   width: 100%;
-  max-height: 66vh;
+  height: 100%;
+  min-height: 0;
   border-radius: 10px;
   display: block;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 250, 247, 0.95));
 }
 
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "metrics"
+      "controls"
+      "chart";
+    grid-template-rows: auto;
+    min-height: 0;
+    height: auto;
+  }
+
+  .metrics,
+  .controls,
+  .chart-wrap {
+    height: auto;
+  }
+
+  body {
+    overflow: auto;
+  }
+}
+
 @media (max-width: 860px) {
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .controls {
-    grid-template-columns: 1fr;
   }
 }
 

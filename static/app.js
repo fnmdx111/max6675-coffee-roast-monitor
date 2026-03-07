@@ -35,6 +35,11 @@ const chart = {
   ctx: el.chart.getContext("2d"),
   margin: { left: 58, right: 58, top: 26, bottom: 42 },
 };
+const fixedTempUpperBoundC = 212 * 1.15;
+const tempGuides = [
+  { tempC: 208, color: "#7e5a11", label: "1st crack guide (208C)" },
+  { tempC: 212, color: "#7b2b1f", label: "drop guide (212C)" },
+];
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -121,7 +126,7 @@ function axisBounds() {
   return {
     xMaxSec: Math.max(600, state.points.length ? state.points[state.points.length - 1].tSec + 20 : 600),
     tMin: Math.floor(Math.min(0, tMin - 5) / 5) * 5,
-    tMax: Math.ceil((tMax + 5) / 5) * 5,
+    tMax: Math.ceil(Math.max(tMax + 5, fixedTempUpperBoundC) / 5) * 5,
     rMin: Math.floor(Math.min(-5, rMin - 1)),
     rMax: Math.ceil(Math.max(25, rMax + 1)),
   };
@@ -167,6 +172,21 @@ function drawChart() {
   }
   ctx.stroke();
 
+  for (const guide of tempGuides) {
+    if (guide.tempC < b.tMin || guide.tempC > b.tMax) continue;
+    const y = tToPx(guide.tempC);
+    ctx.strokeStyle = guide.color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    ctx.moveTo(m.left, y);
+    ctx.lineTo(w - m.right, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = guide.color;
+    ctx.fillText(guide.label, m.left + 8, y - 6);
+  }
+
   if (state.running || state.finished) {
     const p = profileById(state.selectedProfileId);
     if (p) {
@@ -197,7 +217,7 @@ function drawChart() {
       ctx.beginPath();
       ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillText("1st crack", x + 6, y - 6);
+      ctx.fillText(`1st crack @ ${state.crackMark.tempC}C`, x + 6, y - 6);
     }
   }
 
@@ -334,7 +354,8 @@ function pushPoint(data) {
     ror: 0,
   };
   state.points.push(point);
-  const ror = computeRor(tSec);
+  const serverRor = Number(data.ror_c_per_min);
+  const ror = Number.isFinite(serverRor) ? serverRor : computeRor(tSec);
   point.ror = ror;
 
   el.tempValue.textContent = data.adjusted_c.toFixed(1);

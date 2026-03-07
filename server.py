@@ -4,6 +4,7 @@ import json
 import random
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from http import HTTPStatus
@@ -21,6 +22,10 @@ DEFAULT_CONFIG = {
     "host": "0.0.0.0",
     "port": 8000,
     "poll_interval_sec": 0.5,
+    "ror": {
+        "window_sec": 30.0,
+        "min_span_sec": 5.0
+    },
     "sensor": {
         "mode": "mock",
         "mock": {
@@ -207,16 +212,45 @@ class AppState:
         )
         self.mode = mode
         self.lock = threading.Lock()
+        ror_cfg = config.get("ror", {})
+        self.ror_window_sec = float(ror_cfg.get("window_sec", config.get("ror_window_sec", 30.0)))
+        self.ror_min_span_sec = float(ror_cfg.get("min_span_sec", 5.0))
+        self._recent_adjusted: deque[tuple[float, float]] = deque()
+        self._last_ror_c_per_min = 0.0
 
     def read_temperature(self) -> dict[str, Any]:
+        now_epoch = time.time()
         with self.lock:
             raw_c = self.sensor.read_c()
             adjusted_c = self.calibration.apply(raw_c)
+            self._recent_adjusted.append((now_epoch, adjusted_c))
+
+            cutoff = now_epoch - self.ror_window_sec
+            while self._recent_adjusted and self._recent_adjusted[0][0] < cutoff:
+                self._recent_adjusted.popleft()
+
+            if len(self._recent_adjusted) >= 2:
+                t0, temp0 = self._recent_adjusted[0]
+                for ts, temp in self._recent_adjusted:
+                    if now_epoch - ts >= self.ror_min_span_sec:
+                        t0, temp0 = ts, temp
+                        break
+
+                dt = now_epoch - t0
+                if dt >= 0.5:
+                    ror_c_per_min = (adjusted_c - temp0) / dt * 60.0
+                    self._last_ror_c_per_min = ror_c_per_min
+                else:
+                    ror_c_per_min = self._last_ror_c_per_min
+            else:
+                ror_c_per_min = 0.0
 
         return {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "raw_c": round(raw_c, 3),
             "adjusted_c": round(adjusted_c, 3),
+            "ror_c_per_min": round(ror_c_per_min, 3),
+            "ror_window_sec": round(self.ror_window_sec, 3),
             "sensor_mode": self.mode,
         }
 
@@ -297,6 +331,7 @@ class RoastHandler(BaseHTTPRequestHandler):
             payload = {
                 "ok": True,
                 "poll_interval_sec": float(self.config.get("poll_interval_sec", 0.5)),
+                "ror": self.config.get("ror", {"window_sec": 30.0}),
                 "auto_finish": self.config.get("auto_finish", {}),
                 "sensor_mode": self.state.mode if self.state else "unknown",
             }
