@@ -1,0 +1,32 @@
+{
+  "host": "0.0.0.0",
+  "port": 8000,
+  "poll_interval_sec": 0.5,
+  "sensor": {
+    "mode": "mock",
+    "mock": {
+      "noise_c": 0.25,
+      "response": 0.24,
+      "cycle_sec": 900,
+      "curve": [
+        {"time_sec": 0, "temp_c": 205},
+        {"time_sec": 95, "temp_c": 92},
+        {"time_sec": 270, "temp_c": 152},
+        {"time_sec": 500, "temp_c": 196},
+        {"time_sec": 620, "temp_c": 209},
+        {"time_sec": 760, "temp_c": 80},
+        {"time_sec": 900, "temp_c": 34}
+      ]
+    }
+  },
+  "calibration": {
+    "measured_at_0c": 0.0,
+    "measured_at_100c": 100.0
+  },
+  "auto_finish": {
+    "enabled": true,
+    "drop_c": 18.0,
+    "window_sec": 25.0,
+    "min_temp_c": 140.0
+  }
+}

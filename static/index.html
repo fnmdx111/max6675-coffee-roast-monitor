@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Coffee Roast Helper</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="header">
+        <h1>Coffee Roast Helper</h1>
+        <p id="serverStatus" class="muted">Connecting to server...</p>
+      </header>
+
+      <section class="metrics">
+        <article class="card gauge temp">
+          <h2>Temperature</h2>
+          <div class="value"><span id="tempValue">--</span><small>C</small></div>
+          <p class="muted" id="tempRaw">raw -- C</p>
+        </article>
+
+        <article class="card gauge ror">
+          <h2>RoR</h2>
+          <div class="value"><span id="rorValue">--</span><small>C/min</small></div>
+          <p class="muted" id="recommendation">Select profile and press Start</p>
+        </article>
+
+        <article class="card timer">
+          <h2>Session Time</h2>
+          <div class="value"><span id="sessionClock">00:00</span></div>
+          <p class="muted" id="stageName">Stage: -</p>
+        </article>
+
+        <article class="card timer">
+          <h2>Post 1st Crack</h2>
+          <div class="value"><span id="crackClock">--:--</span></div>
+          <p class="muted" id="weightLoss">WL est: --%</p>
+        </article>
+      </section>
+
+      <section class="controls card">
+        <label>
+          Profile
+          <select id="profileSelect"></select>
+        </label>
+        <div class="buttons">
+          <button id="startBtn" class="primary">Start</button>
+          <button id="crackBtn">1st Crack</button>
+          <button id="finishBtn" class="warn">Finish</button>
+          <button id="resetBtn">Reset</button>
+        </div>
+      </section>
+
+      <section class="card chart-wrap">
+        <canvas id="chart" width="1200" height="600" aria-label="Temperature and RoR chart"></canvas>
+        <p class="muted">Left axis: Temp (C), Right axis: RoR (C/min), X axis: time (min)</p>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

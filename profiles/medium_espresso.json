@@ -1,0 +1,9 @@
+{
+  "id": "medium_espresso",
+  "name": "Medium Roast - Espresso",
+  "stages": [
+    {"name": "Drying", "start_sec": 0, "end_sec": 250, "ror_min": 8, "ror_max": 13},
+    {"name": "Maillard", "start_sec": 250, "end_sec": 500, "ror_min": 6, "ror_max": 10},
+    {"name": "Development", "start_sec": 500, "end_sec": 690, "ror_min": 3, "ror_max": 6}
+  ]
+}

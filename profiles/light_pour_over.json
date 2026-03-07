@@ -1,0 +1,9 @@
+{
+  "id": "light_pour_over",
+  "name": "Light Roast - Pour Over",
+  "stages": [
+    {"name": "Drying", "start_sec": 0, "end_sec": 220, "ror_min": 10, "ror_max": 15},
+    {"name": "Maillard", "start_sec": 220, "end_sec": 420, "ror_min": 8, "ror_max": 12},
+    {"name": "Development", "start_sec": 420, "end_sec": 570, "ror_min": 4, "ror_max": 7}
+  ]
+}

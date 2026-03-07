@@ -1,0 +1,29 @@
+[
+  {
+    "id": "light_syphon",
+    "name": "Light Roast - Syphon",
+    "stages": [
+      {"name": "Drying", "start_sec": 0, "end_sec": 240, "ror_min": 9, "ror_max": 14},
+      {"name": "Maillard", "start_sec": 240, "end_sec": 450, "ror_min": 7, "ror_max": 11},
+      {"name": "Development", "start_sec": 450, "end_sec": 600, "ror_min": 4, "ror_max": 7}
+    ]
+  },
+  {
+    "id": "light_pour_over",
+    "name": "Light Roast - Pour Over",
+    "stages": [
+      {"name": "Drying", "start_sec": 0, "end_sec": 220, "ror_min": 10, "ror_max": 15},
+      {"name": "Maillard", "start_sec": 220, "end_sec": 420, "ror_min": 8, "ror_max": 12},
+      {"name": "Development", "start_sec": 420, "end_sec": 570, "ror_min": 4, "ror_max": 7}
+    ]
+  },
+  {
+    "id": "medium_espresso",
+    "name": "Medium Roast - Espresso",
+    "stages": [
+      {"name": "Drying", "start_sec": 0, "end_sec": 250, "ror_min": 8, "ror_max": 13},
+      {"name": "Maillard", "start_sec": 250, "end_sec": 500, "ror_min": 6, "ror_max": 10},
+      {"name": "Development", "start_sec": 500, "end_sec": 690, "ror_min": 3, "ror_max": 6}
+    ]
+  }
+]

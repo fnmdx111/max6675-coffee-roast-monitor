@@ -1,0 +1,9 @@
+{
+  "id": "light_syphon",
+  "name": "Light Roast - Syphon",
+  "stages": [
+    {"name": "Drying", "start_sec": 0, "end_sec": 240, "ror_min": 9, "ror_max": 14},
+    {"name": "Maillard", "start_sec": 240, "end_sec": 450, "ror_min": 7, "ror_max": 11},
+    {"name": "Development", "start_sec": 450, "end_sec": 600, "ror_min": 4, "ror_max": 7}
+  ]
+}
