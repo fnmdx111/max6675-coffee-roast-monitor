@@ -4,8 +4,19 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PID_FILE="$ROOT_DIR/.roast_server.pid"
 LOG_FILE="$ROOT_DIR/.roast_server.log"
+VENV_PATH="${ROAST_HELPER_VENV:-}"
 
 cd "$ROOT_DIR"
+
+if [[ -n "$VENV_PATH" ]]; then
+  if [[ -f "$VENV_PATH/bin/activate" ]]; then
+    # shellcheck disable=SC1091
+    source "$VENV_PATH/bin/activate"
+  else
+    echo "ROAST_HELPER_VENV is set but no activate script found at: $VENV_PATH/bin/activate"
+    exit 1
+  fi
+fi
 
 HOST="127.0.0.1"
 PORT="8000"

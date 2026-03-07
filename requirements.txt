@@ -1,0 +1,7 @@
+# Runtime dependencies for Raspberry Pi + MAX6675 sensor mode
+# (server.py, max6675.py, scripts/calibrate_*.py)
+adafruit-blinka
+RPi.GPIO
+
+# Optional: only needed if you still run legacy plot.py
+# matplotlib
