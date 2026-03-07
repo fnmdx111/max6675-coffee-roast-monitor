@@ -1,9 +1,34 @@
 {
-  "id": "light_pour_over",
-  "name": "Light Roast - Pour Over",
+  "id": "light_pour_over_v60_neo_gas_stovetop_roaster",
+  "name": "Light Roast - Pour Over - Gas Stovetop Roaster",
   "stages": [
-    {"name": "Drying", "start_sec": 0, "end_sec": 220, "ror_min": 10, "ror_max": 15},
-    {"name": "Maillard", "start_sec": 220, "end_sec": 420, "ror_min": 8, "ror_max": 12},
-    {"name": "Development", "start_sec": 420, "end_sec": 570, "ror_min": 4, "ror_max": 7}
+    {
+      "name": "Drying",
+      "start_sec": 0,
+      "end_sec": 300,
+      "ror_min": 12,
+      "ror_max": 16
+    },
+    {
+      "name": "Early Maillard",
+      "start_sec": 300,
+      "end_sec": 540,
+      "ror_min": 9,
+      "ror_max": 13
+    },
+    {
+      "name": "Late Maillard",
+      "start_sec": 540,
+      "end_sec": 720,
+      "ror_min": 7,
+      "ror_max": 10
+    },
+    {
+      "name": "Development",
+      "start_sec": 720,
+      "end_sec": 780,
+      "ror_min": 4,
+      "ror_max": 6
+    }
   ]
 }

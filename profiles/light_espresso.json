@@ -1,0 +1,34 @@
+{
+  "id": "light_espresso_gas_stovetop_roaster",
+  "name": "Light Roast - Espresso - Gas Stovetop Roaster",
+  "stages": [
+    {
+      "name": "Drying",
+      "start_sec": 0,
+      "end_sec": 320,
+      "ror_min": 10,
+      "ror_max": 14
+    },
+    {
+      "name": "Early Maillard",
+      "start_sec": 320,
+      "end_sec": 620,
+      "ror_min": 8,
+      "ror_max": 11
+    },
+    {
+      "name": "Late Maillard",
+      "start_sec": 620,
+      "end_sec": 820,
+      "ror_min": 6,
+      "ror_max": 8
+    },
+    {
+      "name": "Development",
+      "start_sec": 820,
+      "end_sec": 920,
+      "ror_min": 4,
+      "ror_max": 5
+    }
+  ]
+}
