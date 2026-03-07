@@ -62,6 +62,12 @@ function profileById(id) {
   return state.profiles.find((p) => p.id === id) || null;
 }
 
+function selectedProfileEndSec() {
+  const p = profileById(state.selectedProfileId);
+  if (!p || !Array.isArray(p.stages) || p.stages.length === 0) return 0;
+  return p.stages.reduce((maxEnd, s) => Math.max(maxEnd, Number(s.end_sec) || 0), 0);
+}
+
 function currentStage(sessionSec) {
   if (!Number.isFinite(sessionSec) || !state.selectedProfileId) return null;
   const p = profileById(state.selectedProfileId);
@@ -123,8 +129,9 @@ function axisBounds() {
   const rMin = rors.length ? Math.min(...rors) : -5;
   const rMax = rors.length ? Math.max(...rors) : 25;
 
+  const profileEndSec = state.running || state.finished ? selectedProfileEndSec() : 0;
   return {
-    xMaxSec: Math.max(600, state.points.length ? state.points[state.points.length - 1].tSec + 20 : 600),
+    xMaxSec: Math.max(600, profileEndSec, state.points.length ? state.points[state.points.length - 1].tSec + 20 : 600),
     tMin: Math.floor(Math.min(0, tMin - 5) / 5) * 5,
     tMax: Math.ceil(Math.max(tMax + 5, fixedTempUpperBoundC) / 5) * 5,
     rMin: Math.floor(Math.min(-5, rMin - 1)),
@@ -192,8 +199,8 @@ function drawChart() {
     if (p) {
       ctx.fillStyle = "rgba(31, 111, 158, 0.12)";
       for (const s of p.stages) {
-        const x0 = xToPx(s.start_sec);
-        const x1 = xToPx(s.end_sec);
+        const x0 = clamp(xToPx(s.start_sec), m.left, w - m.right);
+        const x1 = clamp(xToPx(s.end_sec), m.left, w - m.right);
         const y0 = rToPx(s.ror_max);
         const y1 = rToPx(s.ror_min);
         ctx.fillRect(x0, y0, Math.max(0, x1 - x0), Math.max(0, y1 - y0));

@@ -120,6 +120,7 @@ body {
   gap: 0.75rem;
   align-items: stretch;
   min-height: 0;
+  min-width: 0;
 }
 
 .server-status {
@@ -132,6 +133,7 @@ body {
   grid-template-rows: auto auto;
   gap: 0.4rem;
   font-weight: 700;
+  min-width: 0;
 }
 
 select,
@@ -145,6 +147,12 @@ button {
 
 select {
   background: white;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .buttons {
