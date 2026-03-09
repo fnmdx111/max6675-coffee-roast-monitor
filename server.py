@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import base64
 import json
 import random
 import threading
@@ -10,6 +11,8 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from posixpath import dirname as posix_dirname
+from posixpath import join as posix_join
 from typing import Any
 from urllib.parse import urlparse
 
@@ -65,6 +68,20 @@ DEFAULT_CONFIG = {
         "drop_c": 18.0,
         "window_sec": 25.0,
         "min_temp_c": 140.0,
+    },
+    "upload": {
+        "backend": "none",
+        "sftp": {
+            "enabled": False,
+            "host": "",
+            "port": 22,
+            "username": "",
+            "password": "",
+            "private_key_path": "",
+            "remote_dir": "/coffee-roast-monitor",
+            "timeout_sec": 10.0,
+            "strict_host_key_check": False,
+        },
     },
 }
 
@@ -338,6 +355,102 @@ class RoastHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    @staticmethod
+    def _sanitize_name_stem(stem: Any) -> str:
+        raw = str(stem or "").strip()
+        if not raw:
+            return datetime.now().strftime("roast_%Y%m%d_%H%M%S")
+        safe_chars = []
+        for ch in raw:
+            if ch.isalnum() or ch in ("-", "_"):
+                safe_chars.append(ch)
+            else:
+                safe_chars.append("_")
+        return "".join(safe_chars).strip("_") or datetime.now().strftime("roast_%Y%m%d_%H%M%S")
+
+    @staticmethod
+    def _decode_png_data_url(value: Any) -> bytes:
+        if not isinstance(value, str):
+            raise ValueError("png_data_url must be a string")
+        prefix = "data:image/png;base64,"
+        if not value.startswith(prefix):
+            raise ValueError("png_data_url must be a PNG data URL")
+        b64 = value[len(prefix):]
+        try:
+            return base64.b64decode(b64, validate=True)
+        except Exception as exc:  # noqa: BLE001
+            raise ValueError(f"invalid base64 png payload: {exc}") from exc
+
+    @staticmethod
+    def _sftp_ensure_remote_dir(sftp: Any, remote_dir: str) -> None:
+        if not remote_dir or remote_dir == "/":
+            return
+        parts: list[str] = []
+        current = remote_dir
+        while current and current != "/":
+            parts.append(current)
+            current = posix_dirname(current)
+        for path in reversed(parts):
+            try:
+                sftp.stat(path)
+            except IOError:
+                sftp.mkdir(path)
+
+    def _upload_files_sftp(self, files: list[tuple[str, bytes]]) -> dict[str, Any]:
+        upload_cfg = self.config.get("upload", {})
+        sftp_cfg = upload_cfg.get("sftp", {})
+        if not (upload_cfg.get("backend") == "sftp" and sftp_cfg.get("enabled")):
+            return {"enabled": False, "uploaded": False, "files": []}
+
+        host = str(sftp_cfg.get("host", "")).strip()
+        username = str(sftp_cfg.get("username", "")).strip()
+        if not host or not username:
+            raise ValueError("SFTP upload enabled but host/username not configured")
+
+        try:
+            import paramiko  # type: ignore
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(f"paramiko import failed: {exc}") from exc
+
+        remote_dir = str(sftp_cfg.get("remote_dir", "/coffee-roast-monitor")).strip() or "/coffee-roast-monitor"
+        timeout_sec = float(sftp_cfg.get("timeout_sec", 10.0))
+        client = paramiko.SSHClient()
+        if bool(sftp_cfg.get("strict_host_key_check", False)):
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(paramiko.RejectPolicy())
+        else:
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        connect_kwargs: dict[str, Any] = {
+            "hostname": host,
+            "port": int(sftp_cfg.get("port", 22)),
+            "username": username,
+            "timeout": timeout_sec,
+            "banner_timeout": timeout_sec,
+            "auth_timeout": timeout_sec,
+        }
+        private_key_path = str(sftp_cfg.get("private_key_path", "")).strip()
+        password = str(sftp_cfg.get("password", ""))
+        if private_key_path:
+            connect_kwargs["key_filename"] = private_key_path
+        elif password:
+            connect_kwargs["password"] = password
+
+        uploaded_paths: list[str] = []
+        try:
+            client.connect(**connect_kwargs)
+            with client.open_sftp() as sftp:
+                self._sftp_ensure_remote_dir(sftp, remote_dir)
+                for name, blob in files:
+                    remote_path = posix_join(remote_dir, name)
+                    with sftp.open(remote_path, "wb") as f:
+                        f.write(blob)
+                    uploaded_paths.append(remote_path)
+        finally:
+            client.close()
+
+        return {"enabled": True, "uploaded": True, "files": uploaded_paths}
+
     def do_GET(self) -> None:  # pylint: disable=invalid-name
         parsed = urlparse(self.path)
         path = parsed.path
@@ -378,6 +491,7 @@ class RoastHandler(BaseHTTPRequestHandler):
                     },
                 ),
                 "auto_finish": self.config.get("auto_finish", {}),
+                "upload": self.config.get("upload", {"backend": "none"}),
                 "sensor_mode": self.state.mode if self.state else "unknown",
             }
             self._json(HTTPStatus.OK, payload)
@@ -399,6 +513,57 @@ class RoastHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # pylint: disable=invalid-name
         parsed = urlparse(self.path)
+        if parsed.path == "/api/archive":
+            try:
+                payload = self._read_json_body()
+            except json.JSONDecodeError as exc:
+                self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": f"invalid json: {exc}"})
+                return
+
+            try:
+                stem = self._sanitize_name_stem(payload.get("name_stem"))
+                png_data = self._decode_png_data_url(payload.get("png_data_url"))
+                csv_text = payload.get("csv_text", "")
+                if not isinstance(csv_text, str):
+                    raise ValueError("csv_text must be a string")
+                csv_data = csv_text.encode("utf-8")
+            except ValueError as exc:
+                self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+                return
+
+            SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+            artifact_dir = SESSIONS_DIR / "artifacts"
+            artifact_dir.mkdir(parents=True, exist_ok=True)
+            local_png = artifact_dir / f"{stem}.png"
+            local_csv = artifact_dir / f"{stem}.csv"
+            local_png.write_bytes(png_data)
+            local_csv.write_bytes(csv_data)
+
+            files = [
+                (local_png.name, png_data),
+                (local_csv.name, csv_data),
+            ]
+            try:
+                upload_result = self._upload_files_sftp(files)
+                self._json(
+                    HTTPStatus.CREATED,
+                    {
+                        "ok": True,
+                        "local_files": [str(local_png), str(local_csv)],
+                        "upload": upload_result,
+                    },
+                )
+            except Exception as exc:  # noqa: BLE001
+                self._json(
+                    HTTPStatus.BAD_GATEWAY,
+                    {
+                        "ok": False,
+                        "error": f"SFTP upload failed: {exc}",
+                        "local_files": [str(local_png), str(local_csv)],
+                    },
+                )
+            return
+
         if parsed.path != "/api/sessions":
             self.send_error(HTTPStatus.NOT_FOUND)
             return

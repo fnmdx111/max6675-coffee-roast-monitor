@@ -61,6 +61,11 @@ pip install -r requirements.txt
    - `charge_ready.stable_window_sec`
    - `charge_ready.max_abs_ror_c_per_min`
    - `charge_ready.max_temp_span_c`
+8. (Optional) Enable SFTP upload on Finish:
+   - set `upload.backend` to `"sftp"`
+   - set `upload.sftp.enabled` to `true`
+   - configure `upload.sftp.host`, `upload.sftp.username`, and either `upload.sftp.password` or `upload.sftp.private_key_path`
+   - set `upload.sftp.remote_dir` to your NAS destination path
 
 ## Start / Stop
 
@@ -120,6 +125,9 @@ Restart server after applying calibration.
 5. Monitor temp, RoR, stage guidance, and timers.
 6. Press `Finish` to stop recording and auto-export plot/data.
 7. Press `Reset` to clear state for next roast.
+
+When SFTP upload is enabled, `Finish` will also send PNG/CSV to the server and upload them to your NAS over SFTP.
+The server always writes local copies under `sessions/artifacts/` first.
 
 ## Tests
 

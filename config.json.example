@@ -45,5 +45,19 @@
     "drop_c": 18.0,
     "window_sec": 25.0,
     "min_temp_c": 140.0
+  },
+  "upload": {
+    "backend": "none",
+    "sftp": {
+      "enabled": false,
+      "host": "",
+      "port": 22,
+      "username": "",
+      "password": "",
+      "private_key_path": "",
+      "remote_dir": "/coffee-roast-monitor",
+      "timeout_sec": 10.0,
+      "strict_host_key_check": false
+    }
   }
 }

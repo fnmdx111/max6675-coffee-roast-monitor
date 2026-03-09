@@ -12,6 +12,7 @@ const state = {
   selectedProfileId: null,
   autoFinish: { enabled: true, drop_c: 18, window_sec: 25, min_temp_c: 140 },
   rorEmaAlpha: null,
+  uploadBackend: "none",
   chargeReady: {
     enabled: true,
     min_temp_c: 205,
@@ -492,21 +493,25 @@ async function pollLoop() {
 }
 
 function exportPng(nameStem) {
+  const dataUrl = el.chart.toDataURL("image/png");
   const link = document.createElement("a");
   link.download = `${nameStem}.png`;
-  link.href = el.chart.toDataURL("image/png");
+  link.href = dataUrl;
   link.click();
+  return dataUrl;
 }
 
 function exportCsv(nameStem) {
   const header = "t_sec,temp_c,ror_c_per_min\n";
   const rows = state.points.map((p) => `${p.tSec.toFixed(2)},${p.tempC.toFixed(3)},${p.ror.toFixed(3)}`);
-  const blob = new Blob([header, ...rows].join("\n"), { type: "text/csv" });
+  const csvText = [header, ...rows].join("\n");
+  const blob = new Blob([csvText], { type: "text/csv" });
   const link = document.createElement("a");
   link.download = `${nameStem}.csv`;
   link.href = URL.createObjectURL(blob);
   link.click();
   URL.revokeObjectURL(link.href);
+  return csvText;
 }
 
 async function persistSession(reason) {
@@ -520,13 +525,37 @@ async function persistSession(reason) {
     points: state.points,
   };
   try {
-    await fetch("/api/sessions", {
+    const response = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    return await response.json();
   } catch {
     // UI export still works without server persistence.
+    return null;
+  }
+}
+
+async function uploadArtifacts(nameStem, pngDataUrl, csvText, sessionInfo) {
+  if (state.uploadBackend !== "sftp") return;
+  try {
+    const response = await fetch("/api/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name_stem: nameStem,
+        png_data_url: pngDataUrl,
+        csv_text: csvText,
+        session_id: sessionInfo?.session_id || null,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error || "archive failed");
+    if (!data.upload?.uploaded) throw new Error("SFTP upload not enabled on server");
+    el.serverStatus.textContent = "Archived to SFTP";
+  } catch (err) {
+    el.serverStatus.textContent = `Archive upload failed: ${err.message}`;
   }
 }
 
@@ -539,9 +568,9 @@ function finishSession(reason = "manual") {
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const stem = `roast_${stamp}`;
-  exportPng(stem);
-  exportCsv(stem);
-  persistSession(reason);
+  const pngDataUrl = exportPng(stem);
+  const csvText = exportCsv(stem);
+  persistSession(reason).then((sessionInfo) => uploadArtifacts(stem, pngDataUrl, csvText, sessionInfo));
 }
 
 function startSession() {
@@ -599,6 +628,7 @@ async function loadConfig() {
   state.pollingMs = Math.max(200, Math.floor((data.poll_interval_sec || 0.5) * 1000));
   state.autoFinish = data.auto_finish || state.autoFinish;
   state.rorEmaAlpha = Number(data.ror?.ema_alpha);
+  state.uploadBackend = data.upload?.backend || "none";
   state.chargeReady = {
     ...state.chargeReady,
     ...(data.charge_ready || {}),

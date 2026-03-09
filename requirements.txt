@@ -2,6 +2,7 @@
 # (server.py, max6675.py, scripts/calibrate_*.py)
 adafruit-blinka
 RPi.GPIO
+paramiko
 
 # Optional: only needed if you still run legacy plot.py
 # matplotlib
