@@ -32,6 +32,13 @@ DEFAULT_CONFIG = {
         "first_crack_c": 208.0,
         "drop_c": 212.0,
     },
+    "charge_ready": {
+        "enabled": True,
+        "min_temp_c": 205.0,
+        "stable_window_sec": 20.0,
+        "max_abs_ror_c_per_min": 2.5,
+        "max_temp_span_c": 3.0,
+    },
     "sensor": {
         "mode": "mock",
         "mock": {
@@ -359,6 +366,16 @@ class RoastHandler(BaseHTTPRequestHandler):
                 "temp_guides": self.config.get(
                     "temp_guides",
                     {"charge_c": 205.0, "first_crack_c": 208.0, "drop_c": 212.0},
+                ),
+                "charge_ready": self.config.get(
+                    "charge_ready",
+                    {
+                        "enabled": True,
+                        "min_temp_c": 205.0,
+                        "stable_window_sec": 20.0,
+                        "max_abs_ror_c_per_min": 2.5,
+                        "max_temp_span_c": 3.0,
+                    },
                 ),
                 "auto_finish": self.config.get("auto_finish", {}),
                 "sensor_mode": self.state.mode if self.state else "unknown",

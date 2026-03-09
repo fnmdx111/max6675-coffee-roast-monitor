@@ -12,6 +12,14 @@ const state = {
   selectedProfileId: null,
   autoFinish: { enabled: true, drop_c: 18, window_sec: 25, min_temp_c: 140 },
   rorEmaAlpha: null,
+  chargeReady: {
+    enabled: true,
+    min_temp_c: 205,
+    stable_window_sec: 20,
+    max_abs_ror_c_per_min: 2.5,
+    max_temp_span_c: 3,
+  },
+  preheatPoints: [],
 };
 
 const el = {
@@ -20,6 +28,7 @@ const el = {
   tempRaw: document.getElementById("tempRaw"),
   rorValue: document.getElementById("rorValue"),
   recommendation: document.getElementById("recommendation"),
+  chargeReady: document.getElementById("chargeReady"),
   sessionClock: document.getElementById("sessionClock"),
   crackClock: document.getElementById("crackClock"),
   weightLoss: document.getElementById("weightLoss"),
@@ -121,6 +130,83 @@ function inferCrackTemp() {
     if (Math.abs(p.ts - state.crackTs) < Math.abs(nearest.ts - state.crackTs)) nearest = p;
   }
   return nearest.tempC;
+}
+
+function updateChargeReadyStatus(text, ready) {
+  el.chargeReady.textContent = text;
+  el.chargeReady.classList.toggle("is-ready", ready);
+  el.chargeReady.classList.toggle("is-warming", !ready);
+}
+
+function pushPreheatPoint(data) {
+  const cfg = state.chargeReady;
+  const nowTs = Date.parse(data.timestamp) || Date.now();
+  const tempC = Number(data.adjusted_c);
+  const serverRor = Number(data.ror_c_per_min);
+  const ror = Number.isFinite(serverRor) ? serverRor : 0;
+
+  state.preheatPoints.push({ ts: nowTs, tempC, ror });
+  const keepMs = Math.max(10, Number(cfg.stable_window_sec) || 20) * 1000 + 5000;
+  const cutoff = nowTs - keepMs;
+  while (state.preheatPoints.length > 0 && state.preheatPoints[0].ts < cutoff) {
+    state.preheatPoints.shift();
+  }
+}
+
+function evaluateChargeReady() {
+  const cfg = state.chargeReady;
+  if (!cfg?.enabled) {
+    updateChargeReadyStatus("Charge ready: disabled", false);
+    return;
+  }
+  if (!state.preheatPoints.length) {
+    updateChargeReadyStatus("Charge ready: waiting for data", false);
+    return;
+  }
+
+  const latest = state.preheatPoints[state.preheatPoints.length - 1];
+  const minTempC = Number(cfg.min_temp_c);
+  if (!Number.isFinite(latest.tempC) || latest.tempC < minTempC) {
+    updateChargeReadyStatus(`Charge ready: warming (${Number.isFinite(latest.tempC) ? latest.tempC.toFixed(1) : "--"}C/${minTempC.toFixed(0)}C)`, false);
+    return;
+  }
+
+  const stableWindowSec = Math.max(8, Number(cfg.stable_window_sec) || 20);
+  const stableCutoff = latest.ts - stableWindowSec * 1000;
+  const stablePoints = state.preheatPoints.filter((p) => p.ts >= stableCutoff);
+  if (stablePoints.length < 3) {
+    updateChargeReadyStatus("Charge ready: checking stability", false);
+    return;
+  }
+
+  const coverageSec = (stablePoints[stablePoints.length - 1].ts - stablePoints[0].ts) / 1000;
+  if (coverageSec < stableWindowSec * 0.8) {
+    updateChargeReadyStatus("Charge ready: collecting stable window", false);
+    return;
+  }
+
+  let maxAbsRor = 0;
+  let tMin = Infinity;
+  let tMax = -Infinity;
+  for (const p of stablePoints) {
+    if (Number.isFinite(p.ror)) maxAbsRor = Math.max(maxAbsRor, Math.abs(p.ror));
+    if (Number.isFinite(p.tempC)) {
+      tMin = Math.min(tMin, p.tempC);
+      tMax = Math.max(tMax, p.tempC);
+    }
+  }
+  const tempSpan = Number.isFinite(tMin) && Number.isFinite(tMax) ? tMax - tMin : Infinity;
+  const maxAbsRorAllowed = Math.max(0.5, Number(cfg.max_abs_ror_c_per_min) || 2.5);
+  const maxTempSpanC = Math.max(0.5, Number(cfg.max_temp_span_c) || 3.0);
+
+  if (maxAbsRor <= maxAbsRorAllowed && tempSpan <= maxTempSpanC) {
+    updateChargeReadyStatus(`Charge ready: YES (${latest.tempC.toFixed(1)}C)`, true);
+  } else {
+    updateChargeReadyStatus(
+      `Charge ready: stabilizing (RoR ${maxAbsRor.toFixed(1)}/${maxAbsRorAllowed.toFixed(1)}, span ${tempSpan.toFixed(1)}/${maxTempSpanC.toFixed(1)}C)`,
+      false,
+    );
+  }
 }
 
 function axisBounds() {
@@ -374,6 +460,7 @@ function pushPoint(data) {
 
   updateRecommendation(tSec, ror);
   updateClocks(nowTs);
+  evaluateChargeReady();
   drawChart();
   autoFinishCheck();
 }
@@ -389,7 +476,13 @@ async function pollLoop() {
         state.latest = data;
         el.tempValue.textContent = data.adjusted_c.toFixed(1);
         el.tempRaw.textContent = `raw ${data.raw_c.toFixed(1)} C`;
+      } else {
+        state.latest = data;
+        el.tempValue.textContent = data.adjusted_c.toFixed(1);
+        el.tempRaw.textContent = `raw ${data.raw_c.toFixed(1)} C`;
       }
+      pushPreheatPoint(data);
+      evaluateChargeReady();
     } catch (err) {
       el.serverStatus.textContent = `Server error: ${err.message}`;
     }
@@ -486,11 +579,13 @@ function resetSession() {
   state.crackMark = null;
   state.points = [];
   state.latest = null;
+  state.preheatPoints = [];
 
   el.tempValue.textContent = "--";
   el.tempRaw.textContent = "raw -- C";
   el.rorValue.textContent = "--";
   el.recommendation.textContent = "Select profile and press Start";
+  updateChargeReadyStatus("Charge ready: waiting for data", false);
   el.stageName.textContent = "Stage: -";
   updateClocks(Date.now());
   updateControls();
@@ -504,6 +599,10 @@ async function loadConfig() {
   state.pollingMs = Math.max(200, Math.floor((data.poll_interval_sec || 0.5) * 1000));
   state.autoFinish = data.auto_finish || state.autoFinish;
   state.rorEmaAlpha = Number(data.ror?.ema_alpha);
+  state.chargeReady = {
+    ...state.chargeReady,
+    ...(data.charge_ready || {}),
+  };
 
   const guides = [];
   const chargeC = Number(data.temp_guides?.charge_c);
@@ -514,6 +613,7 @@ async function loadConfig() {
   if (Number.isFinite(dropC)) guides.push({ tempC: dropC, color: "#7b2b1f", label: `drop guide (${dropC}C)` });
   tempGuides = guides.length ? guides : [...defaultTempGuides];
   el.serverStatus.textContent = `Connected (${data.sensor_mode})`;
+  updateChargeReadyStatus("Charge ready: waiting for data", false);
 }
 
 async function loadProfiles() {

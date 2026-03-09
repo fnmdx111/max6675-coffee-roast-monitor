@@ -12,6 +12,13 @@
     "first_crack_c": 208.0,
     "drop_c": 212.0
   },
+  "charge_ready": {
+    "enabled": true,
+    "min_temp_c": 205.0,
+    "stable_window_sec": 20.0,
+    "max_abs_ror_c_per_min": 2.5,
+    "max_temp_span_c": 3.0
+  },
   "sensor": {
     "mode": "mock",
     "mock": {

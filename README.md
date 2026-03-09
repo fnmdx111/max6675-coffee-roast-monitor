@@ -53,6 +53,11 @@ pip install -r requirements.txt
    - `temp_guides.charge_c` (preheat/bean-charge guide)
    - `temp_guides.first_crack_c`
    - `temp_guides.drop_c`
+6. (Optional) Tune preheat readiness indicator:
+   - `charge_ready.min_temp_c`
+   - `charge_ready.stable_window_sec`
+   - `charge_ready.max_abs_ror_c_per_min`
+   - `charge_ready.max_temp_span_c`
 
 ## Start / Stop
 

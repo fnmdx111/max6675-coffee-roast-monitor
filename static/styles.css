@@ -127,6 +127,27 @@ body {
   margin-top: 0;
 }
 
+.charge-status {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(16, 55, 42, 0.16);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.charge-status.is-ready {
+  background: rgba(45, 111, 59, 0.14);
+  color: #1d5a2b;
+  border-color: rgba(45, 111, 59, 0.35);
+}
+
+.charge-status.is-warming {
+  background: rgba(126, 90, 17, 0.1);
+  color: #6f4e12;
+  border-color: rgba(126, 90, 17, 0.3);
+}
+
 .controls label {
   display: grid;
   align-content: start;
