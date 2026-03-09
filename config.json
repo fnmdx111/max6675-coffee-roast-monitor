@@ -4,7 +4,13 @@
   "poll_interval_sec": 0.5,
   "ror": {
     "window_sec": 30.0,
-    "min_span_sec": 5.0
+    "min_span_sec": 5.0,
+    "ema_alpha": 0.24
+  },
+  "temp_guides": {
+    "charge_c": 205.0,
+    "first_crack_c": 208.0,
+    "drop_c": 212.0
   },
   "sensor": {
     "mode": "mock",

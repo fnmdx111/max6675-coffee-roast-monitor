@@ -24,7 +24,13 @@ DEFAULT_CONFIG = {
     "poll_interval_sec": 0.5,
     "ror": {
         "window_sec": 30.0,
-        "min_span_sec": 5.0
+        "min_span_sec": 5.0,
+        "ema_alpha": 0.24,
+    },
+    "temp_guides": {
+        "charge_c": 205.0,
+        "first_crack_c": 208.0,
+        "drop_c": 212.0,
     },
     "sensor": {
         "mode": "mock",
@@ -215,8 +221,11 @@ class AppState:
         ror_cfg = config.get("ror", {})
         self.ror_window_sec = float(ror_cfg.get("window_sec", config.get("ror_window_sec", 30.0)))
         self.ror_min_span_sec = float(ror_cfg.get("min_span_sec", 5.0))
+        self.ror_ema_alpha = max(0.0, min(1.0, float(ror_cfg.get("ema_alpha", 0.24))))
         self._recent_adjusted: deque[tuple[float, float]] = deque()
+        self._last_ror_raw_c_per_min = 0.0
         self._last_ror_c_per_min = 0.0
+        self._has_ror = False
 
     def read_temperature(self) -> dict[str, Any]:
         now_epoch = time.time()
@@ -229,6 +238,7 @@ class AppState:
             while self._recent_adjusted and self._recent_adjusted[0][0] < cutoff:
                 self._recent_adjusted.popleft()
 
+            raw_ror_c_per_min = self._last_ror_raw_c_per_min
             if len(self._recent_adjusted) >= 2:
                 t0, temp0 = self._recent_adjusted[0]
                 for ts, temp in self._recent_adjusted:
@@ -238,18 +248,28 @@ class AppState:
 
                 dt = now_epoch - t0
                 if dt >= 0.5:
-                    ror_c_per_min = (adjusted_c - temp0) / dt * 60.0
-                    self._last_ror_c_per_min = ror_c_per_min
-                else:
-                    ror_c_per_min = self._last_ror_c_per_min
+                    raw_ror_c_per_min = (adjusted_c - temp0) / dt * 60.0
+            self._last_ror_raw_c_per_min = raw_ror_c_per_min
+
+            if not self._has_ror:
+                ror_c_per_min = raw_ror_c_per_min
+                self._has_ror = True
+            elif self.ror_ema_alpha <= 0.0:
+                ror_c_per_min = raw_ror_c_per_min
             else:
-                ror_c_per_min = 0.0
+                ror_c_per_min = (
+                    self.ror_ema_alpha * raw_ror_c_per_min
+                    + (1.0 - self.ror_ema_alpha) * self._last_ror_c_per_min
+                )
+            self._last_ror_c_per_min = ror_c_per_min
 
         return {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "raw_c": round(raw_c, 3),
             "adjusted_c": round(adjusted_c, 3),
             "ror_c_per_min": round(ror_c_per_min, 3),
+            "ror_raw_c_per_min": round(raw_ror_c_per_min, 3),
+            "ror_ema_alpha": round(self.ror_ema_alpha, 3),
             "ror_window_sec": round(self.ror_window_sec, 3),
             "sensor_mode": self.mode,
         }
@@ -328,10 +348,18 @@ class RoastHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/config":
+            ror_payload = dict(self.config.get("ror", {}))
+            ror_payload.setdefault("window_sec", self.state.ror_window_sec if self.state else 30.0)
+            ror_payload.setdefault("min_span_sec", self.state.ror_min_span_sec if self.state else 5.0)
+            ror_payload.setdefault("ema_alpha", self.state.ror_ema_alpha if self.state else 0.24)
             payload = {
                 "ok": True,
                 "poll_interval_sec": float(self.config.get("poll_interval_sec", 0.5)),
-                "ror": self.config.get("ror", {"window_sec": 30.0}),
+                "ror": ror_payload,
+                "temp_guides": self.config.get(
+                    "temp_guides",
+                    {"charge_c": 205.0, "first_crack_c": 208.0, "drop_c": 212.0},
+                ),
                 "auto_finish": self.config.get("auto_finish", {}),
                 "sensor_mode": self.state.mode if self.state else "unknown",
             }

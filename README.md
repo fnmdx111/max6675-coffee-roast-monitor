@@ -48,6 +48,11 @@ pip install -r requirements.txt
 4. (Optional) Tune RoR settings in `config.json`:
    - `ror.window_sec`
    - `ror.min_span_sec`
+   - `ror.ema_alpha` (0 disables EMA smoothing; typical range 0.15-0.35)
+5. (Optional) Tune chart temperature guides:
+   - `temp_guides.charge_c` (preheat/bean-charge guide)
+   - `temp_guides.first_crack_c`
+   - `temp_guides.drop_c`
 
 ## Start / Stop
 

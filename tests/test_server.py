@@ -100,6 +100,7 @@ class AppStateTests(unittest.TestCase):
             "ror": {
                 "window_sec": 30.0,
                 "min_span_sec": 0.5,
+                "ema_alpha": 0.3,
             },
         }
 
@@ -110,7 +111,18 @@ class AppStateTests(unittest.TestCase):
         finally:
             state.close()
 
-        self.assertTrue({"timestamp", "raw_c", "adjusted_c", "ror_c_per_min", "ror_window_sec", "sensor_mode"}.issubset(data))
+        self.assertTrue(
+            {
+                "timestamp",
+                "raw_c",
+                "adjusted_c",
+                "ror_c_per_min",
+                "ror_raw_c_per_min",
+                "ror_ema_alpha",
+                "ror_window_sec",
+                "sensor_mode",
+            }.issubset(data)
+        )
         self.assertEqual(data["sensor_mode"], "mock")
         self.assertAlmostEqual(data["adjusted_c"], data["raw_c"] - 10.0, delta=0.5)
 
@@ -124,6 +136,19 @@ class AppStateTests(unittest.TestCase):
             state.close()
 
         self.assertNotEqual(d2["ror_c_per_min"], 0.0)
+
+    def test_ror_ema_smoothing_can_be_disabled(self) -> None:
+        cfg = self._build_config()
+        cfg["ror"]["ema_alpha"] = 0.0
+        state = AppState(cfg)
+        try:
+            _ = state.read_temperature()
+            time.sleep(0.6)
+            d2 = state.read_temperature()
+        finally:
+            state.close()
+
+        self.assertEqual(d2["ror_c_per_min"], d2["ror_raw_c_per_min"])
 
 
 if __name__ == "__main__":

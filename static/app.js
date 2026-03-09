@@ -11,6 +11,7 @@ const state = {
   profiles: [],
   selectedProfileId: null,
   autoFinish: { enabled: true, drop_c: 18, window_sec: 25, min_temp_c: 140 },
+  rorEmaAlpha: null,
 };
 
 const el = {
@@ -36,10 +37,12 @@ const chart = {
   margin: { left: 58, right: 58, top: 26, bottom: 42 },
 };
 const fixedTempUpperBoundC = 212 * 1.15;
-const tempGuides = [
+const defaultTempGuides = [
+  { tempC: 205, color: "#265f3d", label: "charge guide (205C)" },
   { tempC: 208, color: "#7e5a11", label: "1st crack guide (208C)" },
   { tempC: 212, color: "#7b2b1f", label: "drop guide (212C)" },
 ];
+let tempGuides = [...defaultTempGuides];
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -500,6 +503,16 @@ async function loadConfig() {
   if (!data.ok) throw new Error("Failed to load config");
   state.pollingMs = Math.max(200, Math.floor((data.poll_interval_sec || 0.5) * 1000));
   state.autoFinish = data.auto_finish || state.autoFinish;
+  state.rorEmaAlpha = Number(data.ror?.ema_alpha);
+
+  const guides = [];
+  const chargeC = Number(data.temp_guides?.charge_c);
+  const crackC = Number(data.temp_guides?.first_crack_c);
+  const dropC = Number(data.temp_guides?.drop_c);
+  if (Number.isFinite(chargeC)) guides.push({ tempC: chargeC, color: "#265f3d", label: `charge guide (${chargeC}C)` });
+  if (Number.isFinite(crackC)) guides.push({ tempC: crackC, color: "#7e5a11", label: `1st crack guide (${crackC}C)` });
+  if (Number.isFinite(dropC)) guides.push({ tempC: dropC, color: "#7b2b1f", label: `drop guide (${dropC}C)` });
+  tempGuides = guides.length ? guides : [...defaultTempGuides];
   el.serverStatus.textContent = `Connected (${data.sensor_mode})`;
 }
 
