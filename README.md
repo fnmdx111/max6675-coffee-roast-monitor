@@ -16,7 +16,8 @@ It includes:
 
 - `server.py`: HTTP server + sensor integration + RoR computation
 - `max6675.py`: MAX6675 hardware driver wrapper
-- `config.json`: runtime config (sensor mode, calibration, RoR window)
+- `config.json.example`: committed template config
+- `config.json`: local runtime config (git-ignored)
 - `profiles/`: roast profiles loaded from JSON files
 - `static/`: web UI (`index.html`, `styles.css`, `app.js`)
 - `run_roast_helper.sh`: start server and open browser
@@ -42,18 +43,20 @@ pip install -r requirements.txt
 
 1. Clone/copy this repo to your Pi.
 2. Install dependencies.
-3. Edit `config.json`:
+3. Create your local config:
+   - `cp config.json.example config.json`
+4. Edit `config.json`:
    - For real sensor mode: set `"sensor": { "mode": "max6675", ... }`
    - For mock mode: set `"sensor": { "mode": "mock", ... }`
-4. (Optional) Tune RoR settings in `config.json`:
+5. (Optional) Tune RoR settings in `config.json`:
    - `ror.window_sec`
    - `ror.min_span_sec`
    - `ror.ema_alpha` (0 disables EMA smoothing; typical range 0.15-0.35)
-5. (Optional) Tune chart temperature guides:
+6. (Optional) Tune chart temperature guides:
    - `temp_guides.charge_c` (preheat/bean-charge guide)
    - `temp_guides.first_crack_c`
    - `temp_guides.drop_c`
-6. (Optional) Tune preheat readiness indicator:
+7. (Optional) Tune preheat readiness indicator:
    - `charge_ready.min_temp_c`
    - `charge_ready.stable_window_sec`
    - `charge_ready.max_abs_ror_c_per_min`
